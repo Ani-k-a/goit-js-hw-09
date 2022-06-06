@@ -25,5 +25,11 @@
     "posthtml-include": "^1.6.2",
     "sass": "^1.32.8"
   },
-  "dependencies": {}
+  "dependencies": {
+    "autoprefixer": "^10.4.7",
+    "flatpickr": "^4.6.13",
+    "notiflix": "^3.2.5",
+    "postcss": "^8.4.14",
+    "postcss-cli": "^9.1.0"
+  }
 }
