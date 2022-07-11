@@ -1,14 +1,31 @@
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
-import Notiflix from 'notiflix';
+import { Notify } from 'notiflix/build/notiflix-notify-aio';
 
-const inputDataEl = document.querySelector('input[type="text"]');
-const buttonStartEl = document.querySelector('button[data-start]');
-const dataBox = document.querySelector('.timer');
-const emoji = String.fromCodePoint(0x1f621);
+const startBtn = document.querySelector('[data-start]');
+const daysRef = document.querySelector('[data-days]');
+const hoursRef = document.querySelector('[data-hours]');
+const minutesRef = document.querySelector('[data-minutes]');
+const secondsRef = document.querySelector('[data-seconds]');
+let timerId = null;
 
-let diff = null;
-buttonStartEl.setAttribute('disabled', 'disabled');
+startBtn.setAttribute('disabled', true);
+
+function convertMs(ms) {
+  const second = 1000;
+  const minute = second * 60;
+  const hour = minute * 60;
+  const day = hour * 24;
+
+  const days = Math.floor(ms / day);
+  const hours = Math.floor((ms % day) / hour);
+  const minutes = Math.floor(((ms % day) % hour) / minute);
+  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
+
+  return { days, hours, minutes, seconds };
+}
+
+const addLeadingZero = value => String(value).padStart(2, 0);
 
 const options = {
   enableTime: true,
@@ -16,65 +33,47 @@ const options = {
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
-    if (selectedDates[0] <= new Date()) {
-      buttonStartEl.setAttribute('disabled', 'disabled');
-      Notiflix.Report.failure(
-        `Ohhhh...${emoji}`,
-        'Please choose a date in the future',
-        'Alona, try again!!!'
-      );
-    } else {
-      buttonStartEl.removeAttribute('disabled');
+    if (selectedDates[0] < new Date()) {
+      Notify.failure( 'Ohhhh...Please choose a date in the future! Alona, try again!!!');
+      return;
     }
-    diff = selectedDates[0] - new Date();
+    startBtn.removeAttribute('disabled');
+
+    const showTimer = () => {
+      const now = new Date();
+      localStorage.setItem('selectedData', selectedDates[0]);
+      const selectData = new Date(localStorage.getItem('selectedData'));
+
+      if (!selectData) return;
+
+      const diff = selectData - now;
+      const { days, hours, minutes, seconds } = convertMs(diff);
+      daysRef.textContent = days;
+      hoursRef.textContent = addLeadingZero(hours);
+      minutesRef.textContent = addLeadingZero(minutes);
+      secondsRef.textContent = addLeadingZero(seconds);
+
+      if (
+        daysRef.textContent === '0' &&
+        hoursRef.textContent === '00' &&
+        minutesRef.textContent === '00' &&
+        secondsRef.textContent === '00'
+      ) {
+        clearInterval(timerId);
+      }
+    };
+
+    const onClick = () => {
+      if (timerId) {
+        clearInterval(timerId);
+        startBtn.setAttribute('disabled', true);
+      }
+      showTimer();
+      timerId = setInterval(showTimer, 1000);
+    };
+
+    startBtn.addEventListener('click', onClick);
   },
 };
 
-flatpickr(inputDataEl, options);
-
-buttonStartEl.addEventListener('click', () => {
-  let setIntervalId = setInterval(() => {
-    const { days, hours, minutes, seconds } = convertMs(diff);
-    diff -= 1000;
-    document.querySelector('[data-days]').textContent = addLeadingZero(days);
-    document.querySelector('[data-hours]').textContent = addLeadingZero(hours);
-    document.querySelector('[data-minutes]').textContent =
-      addLeadingZero(minutes);
-    document.querySelector('[data-seconds]').textContent =
-      addLeadingZero(seconds);
-    // dataBox.style.color = getRandomHexColor();
-    // dataBox.style.backgroundColor = getRandomHexColor();
-    function addLeadingZero(value) {
-      if (value > 99) {
-        return String(value);
-      }
-      return String(value).padStart(2, '0');
-    }
-    if (days === 0 && hours === 0 && minutes === 0 && seconds === 0) {
-      clearInterval(setIntervalId);
-      return;
-    }
-  }, 1000);
-});
-
-function convertMs(ms) {
-  // Number of milliseconds per unit of time
-  const second = 1000;
-  const minute = second * 60;
-  const hour = minute * 60;
-  const day = hour * 24;
-
-  // Remaining days
-  const days = Math.floor(ms / day);
-  // Remaining hours
-  const hours = Math.floor((ms % day) / hour);
-  // Remaining minutes
-  const minutes = Math.floor(((ms % day) % hour) / minute);
-  // Remaining seconds
-  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
-
-  return { days, hours, minutes, seconds };
-}
-function getRandomHexColor() {
-  return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-}
+flatpickr('#datetime-picker', { ...options });
